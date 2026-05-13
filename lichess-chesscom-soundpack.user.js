@@ -1,13 +1,16 @@
 // ==UserScript==
 // @name         Lichess Chess.com Soundpack
 // @namespace    https://github.com/Puhhh/lichess-chesscom-soundpack
-// @version      0.1.0
+// @version      0.1.1
 // @description  Replace Lichess board sounds with Chess.com sound URLs.
 // @author       Puhhh
 // @match        https://lichess.org/*
 // @match        https://*.lichess.org/*
 // @run-at       document-start
 // @grant        unsafeWindow
+// @grant        GM.xmlHttpRequest
+// @connect      www.chess.com
+// @connect      images.chesscomfiles.com
 // ==/UserScript==
 
 (function () {
@@ -18,14 +21,16 @@
   const INSTALL_FLAG = '__chesscomSoundpackInstalled';
   const MAX_INSTALL_ATTEMPTS = 120;
   const INSTALL_RETRY_MS = 250;
+  const SPECULATIVE_MOVE_DELAY_MS = 180;
 
   const chessComDefault = 'https://www.chess.com/bundles/web/sounds/';
   const chessComTheme = 'https://images.chesscomfiles.com/chess-themes/sounds/_MP3_/default/';
 
   const SOUND_MAP = Object.freeze({
     berserk: `${chessComTheme}notify.mp3`,
-    capture: `${chessComDefault}capture.mp3`,
-    check: `${chessComDefault}move-check.mp3`,
+    castle: `${chessComTheme}castle.mp3`,
+    capture: `${chessComTheme}capture.mp3`,
+    check: `${chessComTheme}move-check.mp3`,
     checkmate: `${chessComTheme}game-end.mp3`,
     confirmation: `${chessComTheme}notify.mp3`,
     countDown0: `${chessComTheme}notify.mp3`,
@@ -45,7 +50,7 @@
     explosion: `${chessComTheme}capture.mp3`,
     genericNotify: `${chessComTheme}notify.mp3`,
     lowTime: `${chessComTheme}notify.mp3`,
-    move: `${chessComDefault}move-self.mp3`,
+    move: `${chessComTheme}move-self.mp3`,
     newChallenge: `${chessComTheme}notify.mp3`,
     newPM: `${chessComTheme}notify.mp3`,
     outOfBound: `${chessComTheme}notify.mp3`,
@@ -57,6 +62,7 @@
     tournamentOther: `${chessComTheme}notify.mp3`,
     victory: `${chessComTheme}game-end.mp3`,
   });
+  const blobPathCache = new Map();
 
   function debug(...args) {
     if (DEBUG) root.console?.debug?.('[lichess-chesscom-soundpack]', ...args);
@@ -64,6 +70,31 @@
 
   function mappedPath(name) {
     return SOUND_MAP[name];
+  }
+
+  async function cspSafePath(path) {
+    if (!path || !/^https:\/\/(?:www\.chess\.com|images\.chesscomfiles\.com)\//.test(path)) return path;
+    if (blobPathCache.has(path)) return blobPathCache.get(path);
+    if (typeof GM === 'undefined' || typeof GM.xmlHttpRequest !== 'function') return path;
+
+    const response = await GM.xmlHttpRequest({
+      method: 'GET',
+      url: path,
+      responseType: 'blob',
+    });
+
+    if (response.status < 200 || response.status >= 300) {
+      throw new Error(`${path} failed ${response.status}`);
+    }
+
+    const blobUrl = root.URL.createObjectURL(response.response);
+    blobPathCache.set(path, blobUrl);
+    return blobUrl;
+  }
+
+  function optionFlag(options, name) {
+    const value = options?.[name];
+    return typeof value === 'function' ? Boolean(value.call(options)) : Boolean(value);
   }
 
   function install(sound) {
@@ -76,23 +107,49 @@
 
     if (!originalLoad) return false;
 
-    sound.load = function chessComSoundpackLoad(name, path) {
-      return originalLoad(name, path || mappedPath(name));
+    let speculativeMoveTimer;
+
+    sound.load = async function chessComSoundpackLoad(name, path) {
+      return originalLoad(name, await cspSafePath(path || mappedPath(name)));
     };
+
+    if (originalPlay) {
+      sound.play = function chessComSoundpackPlay(name, volume) {
+        if ((name === 'check' || name === 'checkmate') && speculativeMoveTimer) {
+          root.clearTimeout(speculativeMoveTimer);
+          speculativeMoveTimer = undefined;
+        }
+        return originalPlay(name, volume);
+      };
+    }
 
     if (originalMove && originalPlay) {
       sound.move = function chessComSoundpackMove(options) {
         const volume = options?.volume ?? 1;
 
         if (options?.filter === 'music') return originalMove(options);
-        if (options?.name) return sound.play(options.name, volume);
+        if (options?.name) {
+          if (options.filter === 'game' && (options.name === 'move' || options.name === 'capture')) {
+            if (speculativeMoveTimer) root.clearTimeout(speculativeMoveTimer);
+            speculativeMoveTimer = root.setTimeout(() => {
+              speculativeMoveTimer = undefined;
+              sound.play(options.name, volume);
+            }, SPECULATIVE_MOVE_DELAY_MS);
+            return undefined;
+          }
+          return sound.play(options.name, volume);
+        }
 
         const san = options?.san ?? '';
-        if (san.includes('x')) sound.play('capture', volume);
-        else sound.play('move', volume);
+        let name;
+        if (san.includes('#') || optionFlag(options, 'checkmate') || optionFlag(options, 'mate')) name = 'checkmate';
+        else if (san.includes('+') || optionFlag(options, 'check')) name = 'check';
+        else if (san.startsWith('O-O')) name = 'castle';
+        else if (san.includes('x')) name = 'capture';
+        else name = 'move';
 
-        if (san.includes('#')) sound.play('checkmate', volume);
-        else if (san.includes('+')) sound.play('check', volume);
+        debug('move', { name, san, check: optionFlag(options, 'check'), options });
+        sound.play(name, volume);
 
         return undefined;
       };
@@ -129,9 +186,9 @@
   }
 
   function waitAndInstall(attempt = 0) {
-    if (install(root.lichess?.sound)) return;
+    if (install(root.site?.sound) || install(root.lichess?.sound)) return;
     if (attempt >= MAX_INSTALL_ATTEMPTS) {
-      debug('lichess.sound was not found');
+      debug('site.sound or lichess.sound was not found');
       return;
     }
     root.setTimeout(() => waitAndInstall(attempt + 1), INSTALL_RETRY_MS);

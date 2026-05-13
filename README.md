@@ -20,11 +20,14 @@ Each key is a Lichess sound event name, and each value is the audio URL that sho
 const SOUND_MAP = Object.freeze({
   move: 'https://www.chess.com/bundles/web/sounds/move-self.mp3',
   capture: 'https://www.chess.com/bundles/web/sounds/capture.mp3',
-  check: 'https://www.chess.com/bundles/web/sounds/move-check.mp3',
+  check: 'https://images.chesscomfiles.com/chess-themes/sounds/_MP3_/default/move-check.mp3',
+  castle: 'https://images.chesscomfiles.com/chess-themes/sounds/_MP3_/default/castle.mp3',
 });
 ```
 
 If a sound event is not listed, Lichess keeps its original behavior.
+
+The script downloads configured Chess.com URLs through Tampermonkey and passes Lichess a local `blob:` URL. This avoids Lichess Content Security Policy blocking direct `fetch()` requests to `chess.com`.
 
 ## Notes
 
