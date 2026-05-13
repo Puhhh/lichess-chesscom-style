@@ -30,11 +30,12 @@ function createScheduler() {
   };
 }
 
-function loadScript({ withSound = true, soundGlobal = 'lichess' } = {}) {
+function loadScript({ pathname = '/', withSound = true, soundGlobal = 'lichess' } = {}) {
   const scheduler = createScheduler();
   const calls = [];
   const gmRequests = [];
   const blobUrls = [];
+  const eventHandlers = {};
   const sound = withSound
     ? {
         async load(name, path) {
@@ -55,7 +56,7 @@ function loadScript({ withSound = true, soundGlobal = 'lichess' } = {}) {
     : undefined;
 
   const window = {
-    location: { hostname: 'lichess.org' },
+    location: { hostname: 'lichess.org', pathname },
     console: {
       debug: () => {},
       warn: () => {},
@@ -91,7 +92,7 @@ function loadScript({ withSound = true, soundGlobal = 'lichess' } = {}) {
   vm.runInContext(fs.readFileSync(scriptPath, 'utf8'), context);
   scheduler.run();
 
-  return { blobUrls, calls, gmRequests, scheduler, sound, window };
+  return { blobUrls, calls, eventHandlers, gmRequests, scheduler, sound, window };
 }
 
 test('maps known Lichess sound names to Chess.com URLs', async () => {
@@ -229,6 +230,36 @@ test('plays speculative board move sound when no check arrives', () => {
 
   sound.move({ name: 'move', filter: 'game' });
   scheduler.run();
+
+  assert.deepEqual(calls, [['play', 'move', 1]]);
+});
+
+test('plays a move sound when ply goes backward', () => {
+  const { calls, eventHandlers, scheduler, window } = loadScript({ pathname: '/analysis', soundGlobal: 'site' });
+  window.lichess.events = {
+    on(name, handler) {
+      eventHandlers[name] = handler;
+    },
+  };
+
+  scheduler.run();
+  eventHandlers.ply(8);
+  eventHandlers.ply(7);
+
+  assert.deepEqual(calls, [['play', 'move', 1]]);
+});
+
+test('plays a move sound when game ply goes backward', () => {
+  const { calls, eventHandlers, scheduler, window } = loadScript({ pathname: '/abcdefgh', soundGlobal: 'site' });
+  window.lichess.events = {
+    on(name, handler) {
+      eventHandlers[name] = handler;
+    },
+  };
+
+  scheduler.run();
+  eventHandlers.ply(20);
+  eventHandlers.ply(19);
 
   assert.deepEqual(calls, [['play', 'move', 1]]);
 });

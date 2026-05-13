@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Lichess Chess.com Soundpack
 // @namespace    https://github.com/Puhhh/lichess-chesscom-soundpack
-// @version      0.1.1
+// @version      0.1.2
 // @description  Replace Lichess board sounds with Chess.com sound URLs.
 // @author       Puhhh
 // @match        https://lichess.org/*
@@ -63,6 +63,8 @@
     victory: `${chessComTheme}game-end.mp3`,
   });
   const blobPathCache = new Map();
+  let analysisPlyHookInstalled = false;
+  let previousAnalysisPly;
 
   function debug(...args) {
     if (DEBUG) root.console?.debug?.('[lichess-chesscom-soundpack]', ...args);
@@ -185,8 +187,35 @@
     return true;
   }
 
+  function installAnalysisPlyHook(sound) {
+    const events = root.lichess?.events;
+    if (analysisPlyHookInstalled || !sound || typeof events?.on !== 'function') return analysisPlyHookInstalled;
+
+    events.on('ply', ply => {
+      const nextPly = Number(ply);
+      if (!Number.isFinite(nextPly)) return;
+
+      if (
+        Number.isFinite(previousAnalysisPly) &&
+        nextPly < previousAnalysisPly
+      ) {
+        debug('analysis backward ply', { previousAnalysisPly, nextPly });
+        sound.play('move', 1);
+      }
+
+      previousAnalysisPly = nextPly;
+    });
+    analysisPlyHookInstalled = true;
+    debug('analysis ply hook installed');
+    return true;
+  }
+
   function waitAndInstall(attempt = 0) {
-    if (install(root.site?.sound) || install(root.lichess?.sound)) return;
+    const sound = root.site?.sound || root.lichess?.sound;
+    const soundInstalled = install(sound);
+    const analysisHookInstalled = installAnalysisPlyHook(sound);
+
+    if (soundInstalled && analysisHookInstalled) return;
     if (attempt >= MAX_INSTALL_ATTEMPTS) {
       debug('site.sound or lichess.sound was not found');
       return;
