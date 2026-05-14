@@ -237,6 +237,15 @@ test('cancels speculative board move sound when server reports check', async () 
   assert.deepEqual(calls, [['play', 'check', undefined]]);
 });
 
+test('plays check immediately when a named game move carries a check flag', () => {
+  const { calls, scheduler, sound } = loadScript();
+
+  sound.move({ name: 'move', filter: 'game', check: true });
+  scheduler.run();
+
+  assert.deepEqual(calls, [['play', 'check', 1]]);
+});
+
 test('plays speculative board move sound when no check arrives', () => {
   const { calls, scheduler, sound } = loadScript();
 

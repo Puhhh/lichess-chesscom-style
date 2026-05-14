@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Lichess Chess.com Soundpack
 // @namespace    https://github.com/Puhhh/lichess-chesscom-soundpack
-// @version      0.1.6
+// @version      0.1.7
 // @description  Replace Lichess board sounds with Chess.com sound URLs.
 // @author       Puhhh
 // @match        https://lichess.org/*
@@ -131,6 +131,9 @@
 
         if (options?.filter === 'music') return originalMove(options);
         if (options?.name) {
+          if (optionFlag(options, 'checkmate') || optionFlag(options, 'mate')) return sound.play('checkmate', volume);
+          if (optionFlag(options, 'check')) return sound.play('check', volume);
+
           if (options.filter === 'game' && (options.name === 'move' || options.name === 'capture')) {
             if (speculativeMoveTimer) root.clearTimeout(speculativeMoveTimer);
             speculativeMoveTimer = root.setTimeout(() => {
