@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Lichess Chess.com Soundpack
 // @namespace    https://github.com/Puhhh/lichess-chesscom-style
-// @version      0.1.8
+// @version      0.1.9
 // @description  Replace Lichess board sounds with Chess.com sound URLs.
 // @author       Puhhh
 // @match        https://lichess.org/*
@@ -99,6 +99,10 @@
     return typeof value === 'function' ? Boolean(value.call(options)) : Boolean(value);
   }
 
+  function isCastlingSan(san) {
+    return /^[O0]-[O0](?:-[O0])?/.test(san);
+  }
+
   function install(sound) {
     if (!sound || sound[INSTALL_FLAG]) return Boolean(sound?.[INSTALL_FLAG]);
 
@@ -106,10 +110,18 @@
     const originalPlay = typeof sound.play === 'function' ? sound.play.bind(sound) : undefined;
     const originalMove = typeof sound.move === 'function' ? sound.move.bind(sound) : undefined;
     const originalCountdown = typeof sound.countdown === 'function' ? sound.countdown.bind(sound) : undefined;
+    const originalSaySan = typeof sound.saySan === 'function' ? sound.saySan.bind(sound) : undefined;
 
     if (!originalLoad) return false;
 
     let speculativeMoveTimer;
+    let speculativeMoveVolume = 1;
+
+    function clearSpeculativeMoveTimer() {
+      if (!speculativeMoveTimer) return;
+      root.clearTimeout(speculativeMoveTimer);
+      speculativeMoveTimer = undefined;
+    }
 
     sound.load = async function chessComSoundpackLoad(name, path) {
       return originalLoad(name, await cspSafePath(path || mappedPath(name)));
@@ -118,8 +130,7 @@
     if (originalPlay) {
       sound.play = function chessComSoundpackPlay(name, volume) {
         if ((name === 'check' || name === 'checkmate') && speculativeMoveTimer) {
-          root.clearTimeout(speculativeMoveTimer);
-          speculativeMoveTimer = undefined;
+          clearSpeculativeMoveTimer();
         }
         return originalPlay(name, volume);
       };
@@ -133,9 +144,16 @@
         if (options?.name) {
           if (optionFlag(options, 'checkmate') || optionFlag(options, 'mate')) return sound.play('checkmate', volume);
           if (optionFlag(options, 'check')) return sound.play('check', volume);
+          const san = options?.san ?? '';
+          if (isCastlingSan(san)) {
+            if (san.includes('#')) return sound.play('checkmate', volume);
+            if (san.includes('+')) return sound.play('check', volume);
+            return sound.play('castle', volume);
+          }
 
           if (options.filter === 'game' && (options.name === 'move' || options.name === 'capture')) {
-            if (speculativeMoveTimer) root.clearTimeout(speculativeMoveTimer);
+            clearSpeculativeMoveTimer();
+            speculativeMoveVolume = volume;
             speculativeMoveTimer = root.setTimeout(() => {
               speculativeMoveTimer = undefined;
               sound.play(options.name, volume);
@@ -149,7 +167,7 @@
         let name;
         if (san.includes('#') || optionFlag(options, 'checkmate') || optionFlag(options, 'mate')) name = 'checkmate';
         else if (san.includes('+') || optionFlag(options, 'check')) name = 'check';
-        else if (san.startsWith('O-O')) name = 'castle';
+        else if (isCastlingSan(san)) name = 'castle';
         else if (san.includes('x')) name = 'capture';
         else name = 'move';
 
@@ -157,6 +175,18 @@
         sound.play(name, volume);
 
         return undefined;
+      };
+    }
+
+    if (originalSaySan && originalPlay) {
+      sound.saySan = function chessComSoundpackSaySan(san, ...args) {
+        if (speculativeMoveTimer && isCastlingSan(san ?? '')) {
+          clearSpeculativeMoveTimer();
+          if (!String(san).includes('+') && !String(san).includes('#')) {
+            sound.play('castle', speculativeMoveVolume);
+          }
+        }
+        return originalSaySan(san, ...args);
       };
     }
 

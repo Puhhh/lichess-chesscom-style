@@ -49,6 +49,9 @@ function loadScript({ pathname = '/', withSound = true, soundGlobal = 'lichess' 
         async move(options) {
           calls.push(['move', options]);
         },
+        saySan(san, cut, force) {
+          calls.push(['saySan', san, cut, force]);
+        },
         async countdown(count, interval) {
           calls.push(['countdown', count, interval]);
         },
@@ -253,6 +256,32 @@ test('plays speculative board move sound when no check arrives', () => {
   scheduler.run();
 
   assert.deepEqual(calls, [['play', 'move', 1]]);
+});
+
+test('plays castle for named game moves that carry castling SAN', () => {
+  const { calls, scheduler, sound } = loadScript();
+
+  sound.move({ name: 'move', filter: 'game', san: 'O-O' });
+  sound.move({ name: 'move', filter: 'game', san: '0-0-0' });
+  scheduler.run();
+
+  assert.deepEqual(calls, [
+    ['play', 'castle', 1],
+    ['play', 'castle', 1],
+  ]);
+});
+
+test('uses live game SAN speech hook to replace speculative move with castle', () => {
+  const { calls, scheduler, sound } = loadScript();
+
+  sound.move({ name: 'move', filter: 'game' });
+  sound.saySan('O-O');
+  scheduler.run();
+
+  assert.deepEqual(calls, [
+    ['play', 'castle', 1],
+    ['saySan', 'O-O', undefined, undefined],
+  ]);
 });
 
 test('plays a move sound when ply goes backward', () => {
