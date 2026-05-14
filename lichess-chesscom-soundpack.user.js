@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Lichess Chess.com Soundpack
 // @namespace    https://github.com/Puhhh/lichess-chesscom-soundpack
-// @version      0.1.3
+// @version      0.1.4
 // @description  Replace Lichess board sounds with Chess.com sound URLs.
 // @author       Puhhh
 // @match        https://lichess.org/*
@@ -26,39 +26,39 @@
   const chessComTheme = 'https://images.chesscomfiles.com/chess-themes/sounds/_MP3_/default/';
 
   const SOUND_MAP = Object.freeze({
-    berserk: `${chessComTheme}notify.mp3`,
+    //berserk
     castle: `${chessComTheme}castle.mp3`,
     capture: `${chessComTheme}capture.mp3`,
     check: `${chessComTheme}move-check.mp3`,
     checkmate: `${chessComTheme}game-end.mp3`,
-    confirmation: `${chessComTheme}notify.mp3`,
-    countDown0: `${chessComTheme}notify.mp3`,
-    countDown1: `${chessComTheme}notify.mp3`,
-    countDown2: `${chessComTheme}notify.mp3`,
-    countDown3: `${chessComTheme}notify.mp3`,
-    countDown4: `${chessComTheme}notify.mp3`,
-    countDown5: `${chessComTheme}notify.mp3`,
-    countDown6: `${chessComTheme}notify.mp3`,
-    countDown7: `${chessComTheme}notify.mp3`,
-    countDown8: `${chessComTheme}notify.mp3`,
-    countDown9: `${chessComTheme}notify.mp3`,
-    countDown10: `${chessComTheme}notify.mp3`,
+    //confirmation
+    //countDown0
+    //countDown1
+    //countDown2
+    //countDown3
+    //countDown4
+    //countDown5
+    //countDown6
+    //countDown7
+    //countDown8
+    //countDown9
+    //countDown10
     defeat: `${chessComTheme}game-end.mp3`,
     draw: `${chessComTheme}game-end.mp3`,
-    error: `${chessComTheme}notify.mp3`,
-    explosion: `${chessComTheme}capture.mp3`,
-    genericNotify: `${chessComTheme}notify.mp3`,
-    lowTime: `${chessComTheme}notify.mp3`,
+    // error
+    // explosion
+    // genericNotify
+    lowTime: `${chessComTheme}tenseconds.mp3`,
     move: `${chessComTheme}move-self.mp3`,
-    newChallenge: `${chessComTheme}notify.mp3`,
-    newPM: `${chessComTheme}notify.mp3`,
-    outOfBound: `${chessComTheme}notify.mp3`,
-    select: `${chessComTheme}move-self.mp3`,
-    socialNotify: `${chessComTheme}notify.mp3`,
-    tournament1st: `${chessComTheme}game-end.mp3`,
-    tournament2nd: `${chessComTheme}game-end.mp3`,
-    tournament3rd: `${chessComTheme}game-end.mp3`,
-    tournamentOther: `${chessComTheme}notify.mp3`,
+    //newChallenge
+    //newPM
+    //outOfBound
+    //select
+    //socialNotify
+    //tournament1st
+    //tournament2nd
+    //tournament3rd
+    //tournamentOther
     victory: `${chessComTheme}game-end.mp3`,
   });
   const blobPathCache = new Map();
