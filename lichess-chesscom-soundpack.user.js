@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Lichess Chess.com Soundpack
 // @namespace    https://github.com/Puhhh/lichess-chesscom-soundpack
-// @version      0.1.5
+// @version      0.1.6
 // @description  Replace Lichess board sounds with Chess.com sound URLs.
 // @author       Puhhh
 // @match        https://lichess.org/*
@@ -50,6 +50,7 @@
     genericNotify: `${chessComTheme}game-start.mp3`,
     lowTime: `${chessComTheme}tenseconds.mp3`,
     move: `${chessComTheme}move-self.mp3`,
+    premove: `${chessComTheme}premove.mp3`,
     //newChallenge
     //newPM
     //outOfBound
@@ -143,7 +144,8 @@
 
         const san = options?.san ?? '';
         let name;
-        if (san.includes('#') || optionFlag(options, 'checkmate') || optionFlag(options, 'mate')) name = 'checkmate';
+        if (optionFlag(options, 'premove') || optionFlag(options, 'isPremove')) name = 'premove';
+        else if (san.includes('#') || optionFlag(options, 'checkmate') || optionFlag(options, 'mate')) name = 'checkmate';
         else if (san.includes('+') || optionFlag(options, 'check')) name = 'check';
         else if (san.startsWith('O-O')) name = 'castle';
         else if (san.includes('x')) name = 'capture';
