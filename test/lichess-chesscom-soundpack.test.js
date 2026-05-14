@@ -178,15 +178,15 @@ test('uses analysis tree node check method when SAN has no check suffix', async 
   assert.deepEqual(calls, [['play', 'check', 1]]);
 });
 
-test('plays a premove sound when move options mark a premove', async () => {
+test('ignores premove flags when deriving move sounds', async () => {
   const { calls, sound } = loadScript();
 
   await sound.move({ san: 'e4', isPremove: true });
   await sound.move({ san: 'e5', premove: true });
 
   assert.deepEqual(calls, [
-    ['play', 'premove', 1],
-    ['play', 'premove', 1],
+    ['play', 'move', 1],
+    ['play', 'move', 1],
   ]);
 });
 
