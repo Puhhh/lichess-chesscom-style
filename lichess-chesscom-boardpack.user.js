@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Lichess Chess.com Boardpack
-// @namespace    https://github.com/Puhhh/lichess-chesscom-soundpack
+// @namespace    https://github.com/Puhhh/lichess-chesscom-style
 // @version      0.1.0
 // @description  Replace the Lichess board texture with a Chess.com-style board.
 // @author       Puhhh

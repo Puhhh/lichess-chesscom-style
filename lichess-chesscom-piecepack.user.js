@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Lichess Chess.com Piecepack
-// @namespace    https://github.com/Puhhh/lichess-chesscom-soundpack
+// @namespace    https://github.com/Puhhh/lichess-chesscom-style
 // @version      0.1.0
 // @description  Replace the Lichess chess pieces with a Chess.com-style piece set.
 // @author       Puhhh

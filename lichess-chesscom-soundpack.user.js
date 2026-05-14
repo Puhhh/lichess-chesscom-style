@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Lichess Chess.com Soundpack
-// @namespace    https://github.com/Puhhh/lichess-chesscom-soundpack
+// @namespace    https://github.com/Puhhh/lichess-chesscom-style
 // @version      0.1.7
 // @description  Replace Lichess board sounds with Chess.com sound URLs.
 // @author       Puhhh
