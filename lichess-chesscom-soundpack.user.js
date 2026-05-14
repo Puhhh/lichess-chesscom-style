@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Lichess Chess.com Soundpack
 // @namespace    https://github.com/Puhhh/lichess-chesscom-soundpack
-// @version      0.1.4
+// @version      0.1.5
 // @description  Replace Lichess board sounds with Chess.com sound URLs.
 // @author       Puhhh
 // @match        https://lichess.org/*
@@ -47,7 +47,7 @@
     draw: `${chessComTheme}game-end.mp3`,
     // error
     // explosion
-    // genericNotify
+    genericNotify: `${chessComTheme}game-start.mp3`,
     lowTime: `${chessComTheme}tenseconds.mp3`,
     move: `${chessComTheme}move-self.mp3`,
     //newChallenge
