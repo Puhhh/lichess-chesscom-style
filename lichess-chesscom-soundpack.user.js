@@ -45,8 +45,8 @@
     //countDown10
     defeat: `${chessComTheme}game-end.mp3`,
     draw: `${chessComTheme}game-end.mp3`,
-    // error
-    // explosion
+    //error
+    //explosion
     genericNotify: `${chessComTheme}game-start.mp3`,
     lowTime: `${chessComTheme}tenseconds.mp3`,
     move: `${chessComTheme}move-self.mp3`,
