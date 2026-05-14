@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Lichess Chess.com Boardpack
 // @namespace    https://github.com/Puhhh/lichess-chesscom-style
-// @version      0.1.0
+// @version      0.1.1
 // @description  Replace the Lichess board texture with a Chess.com-style board.
 // @author       Puhhh
 // @match        https://lichess.org/*
@@ -44,6 +44,12 @@
 `;
   }
 
+  function removeLichessBoardPreload() {
+    document
+      .querySelectorAll('link[rel="preload"][href*="/assets/hashed/brown."]')
+      .forEach((link) => link.remove());
+  }
+
   function installBoardTheme() {
     if (!isLichessHost(window.location.hostname)) return false;
 
@@ -63,6 +69,7 @@
     return true;
   }
 
+  removeLichessBoardPreload();
   installBoardTheme();
   window.addEventListener('DOMContentLoaded', installBoardTheme, { once: true });
   window.addEventListener('load', installBoardTheme, { once: true });
