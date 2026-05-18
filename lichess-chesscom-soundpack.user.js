@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Lichess Chess.com Soundpack
 // @namespace    https://github.com/Puhhh/lichess-chesscom-style
-// @version      0.1.9
+// @version      0.1.11
 // @description  Replace Lichess board sounds with Chess.com sound URLs.
 // @author       Puhhh
 // @match        https://lichess.org/*
@@ -24,6 +24,7 @@
   const SPECULATIVE_MOVE_DELAY_MS = 180;
 
   const chessComTheme = 'https://images.chesscomfiles.com/chess-themes/sounds/_MP3_/default/';
+  const chessComWebSounds = 'https://www.chess.com/bundles/web/sounds/';
 
   const SOUND_MAP = Object.freeze({
     //berserk
@@ -54,6 +55,8 @@
     //newChallenge
     //newPM
     //outOfBound
+    'lisp/PuzzleStormEnd': `${chessComWebSounds}result-good-2-15.mp3`,
+    'lisp/PuzzleStormGood': `${chessComWebSounds}correct-2-15.mp3`,
     //select
     //socialNotify
     //tournament1st
@@ -72,6 +75,25 @@
 
   function mappedPath(name) {
     return SOUND_MAP[name];
+  }
+
+  function mappedPathFromSourcePath(path) {
+    if (!path) return undefined;
+    if (/\/PuzzleStormGood(?:\.[a-f0-9]+)?\.mp3(?:[?#].*)?$/i.test(path)) {
+      return SOUND_MAP['lisp/PuzzleStormGood'];
+    }
+    if (/\/PuzzleStormEnd(?:\.[a-f0-9]+)?\.mp3(?:[?#].*)?$/i.test(path)) {
+      return SOUND_MAP['lisp/PuzzleStormEnd'];
+    }
+    return undefined;
+  }
+
+  function replacementPath(name, path) {
+    return mappedPath(name) || mappedPathFromSourcePath(path) || path;
+  }
+
+  function preloadBeforePlay(name) {
+    return typeof name === 'string' && /^lisp\/PuzzleStorm(?:Good|End)$/.test(name) && Boolean(mappedPath(name));
   }
 
   async function cspSafePath(path) {
@@ -124,13 +146,16 @@
     }
 
     sound.load = async function chessComSoundpackLoad(name, path) {
-      return originalLoad(name, await cspSafePath(path || mappedPath(name)));
+      return originalLoad(name, await cspSafePath(replacementPath(name, path)));
     };
 
     if (originalPlay) {
       sound.play = function chessComSoundpackPlay(name, volume) {
         if ((name === 'check' || name === 'checkmate') && speculativeMoveTimer) {
           clearSpeculativeMoveTimer();
+        }
+        if (preloadBeforePlay(name)) {
+          return sound.load(name).then(() => originalPlay(name, volume));
         }
         return originalPlay(name, volume);
       };
