@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Lichess Chess.com Soundpack
 // @namespace    https://github.com/Puhhh/lichess-chesscom-style
-// @version      0.1.11
+// @version      0.1.12
 // @description  Replace Lichess board sounds with Chess.com sound URLs.
 // @author       Puhhh
 // @match        https://lichess.org/*
@@ -55,7 +55,8 @@
     //newChallenge
     //newPM
     //outOfBound
-    'lisp/PuzzleStormEnd': `${chessComWebSounds}result-good-2-15.mp3`,
+    'lisp/Error': `${chessComWebSounds}incorrect-2-15.mp3`,
+    'lisp/PuzzleStormEnd': `${chessComWebSounds}explosion.mp3`,
     'lisp/PuzzleStormGood': `${chessComWebSounds}correct-2-15.mp3`,
     //select
     //socialNotify
@@ -85,6 +86,7 @@
     if (/\/PuzzleStormEnd(?:\.[a-f0-9]+)?\.mp3(?:[?#].*)?$/i.test(path)) {
       return SOUND_MAP['lisp/PuzzleStormEnd'];
     }
+    if (/\/Error(?:\.[a-f0-9]+)?\.mp3(?:[?#].*)?$/i.test(path)) return SOUND_MAP['lisp/Error'];
     return undefined;
   }
 
@@ -93,7 +95,7 @@
   }
 
   function preloadBeforePlay(name) {
-    return typeof name === 'string' && /^lisp\/PuzzleStorm(?:Good|End)$/.test(name) && Boolean(mappedPath(name));
+    return typeof name === 'string' && /^lisp\/(?:PuzzleStorm(?:Good|End)|Error)$/.test(name) && Boolean(mappedPath(name));
   }
 
   async function cspSafePath(path) {

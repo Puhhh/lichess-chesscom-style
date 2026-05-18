@@ -38,32 +38,32 @@ function loadScript({ pathname = '/', withSound = true, soundGlobal = 'lichess' 
   const eventHandlers = {};
   const sound = withSound
     ? {
-        async load(name, path) {
-          calls.push(['load', name, path]);
-          return { name, path };
-        },
-        async play(name, volume) {
-          calls.push(['play', name, volume]);
-          return { name, volume };
-        },
-        async move(options) {
-          calls.push(['move', options]);
-        },
-        saySan(san, cut, force) {
-          calls.push(['saySan', san, cut, force]);
-        },
-        async countdown(count, interval) {
-          calls.push(['countdown', count, interval]);
-        },
-      }
+      async load(name, path) {
+        calls.push(['load', name, path]);
+        return { name, path };
+      },
+      async play(name, volume) {
+        calls.push(['play', name, volume]);
+        return { name, volume };
+      },
+      async move(options) {
+        calls.push(['move', options]);
+      },
+      saySan(san, cut, force) {
+        calls.push(['saySan', san, cut, force]);
+      },
+      async countdown(count, interval) {
+        calls.push(['countdown', count, interval]);
+      },
+    }
     : undefined;
 
   const window = {
     location: { hostname: 'lichess.org', pathname },
     console: {
-      debug: () => {},
-      warn: () => {},
-      error: () => {},
+      debug: () => { },
+      warn: () => { },
+      error: () => { },
     },
     setTimeout: scheduler.setTimeout,
     clearTimeout: scheduler.clearTimeout,
@@ -151,7 +151,7 @@ test('replaces known Lichess puzzle sounds even when Lichess passes hashed URLs'
     gmRequests.map(request => request.url),
     [
       'https://www.chess.com/bundles/web/sounds/correct-2-15.mp3',
-      'https://www.chess.com/bundles/web/sounds/result-good-2-15.mp3',
+      'https://www.chess.com/bundles/web/sounds/explosion.mp3',
     ],
   );
   assert.deepEqual(blobUrls, [
@@ -166,7 +166,7 @@ test('replaces known Lichess puzzle sounds even when Lichess passes hashed URLs'
       url: 'blob:mock-2',
       blob: {
         type: 'audio/mpeg',
-        url: 'https://www.chess.com/bundles/web/sounds/result-good-2-15.mp3',
+        url: 'https://www.chess.com/bundles/web/sounds/explosion.mp3',
       },
     },
   ]);
@@ -199,7 +199,7 @@ test('replaces known Lichess puzzle sounds when they are played by name', async 
     gmRequests.map(request => request.url),
     [
       'https://www.chess.com/bundles/web/sounds/correct-2-15.mp3',
-      'https://www.chess.com/bundles/web/sounds/result-good-2-15.mp3',
+      'https://www.chess.com/bundles/web/sounds/explosion.mp3',
     ],
   );
   assert.deepEqual(calls, [
@@ -207,6 +207,31 @@ test('replaces known Lichess puzzle sounds when they are played by name', async 
     ['play', 'lisp/PuzzleStormGood', undefined],
     ['load', 'lisp/PuzzleStormEnd', 'blob:mock-2'],
     ['play', 'lisp/PuzzleStormEnd', undefined],
+  ]);
+});
+
+test('replaces Lichess puzzle error sound', async () => {
+  const { blobUrls, calls, gmRequests, sound } = loadScript();
+
+  await sound.load('lisp/Error', 'https://lichess1.org/assets/hashed/Error.11bd3340.mp3');
+  await sound.play('lisp/Error');
+
+  assert.deepEqual(gmRequests.map(request => request.url), [
+    'https://www.chess.com/bundles/web/sounds/incorrect-2-15.mp3',
+  ]);
+  assert.deepEqual(blobUrls, [
+    {
+      url: 'blob:mock-1',
+      blob: {
+        type: 'audio/mpeg',
+        url: 'https://www.chess.com/bundles/web/sounds/incorrect-2-15.mp3',
+      },
+    },
+  ]);
+  assert.deepEqual(calls, [
+    ['load', 'lisp/Error', 'blob:mock-1'],
+    ['load', 'lisp/Error', 'blob:mock-1'],
+    ['play', 'lisp/Error', undefined],
   ]);
 });
 
