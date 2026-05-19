@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Lichess Chess.com Soundpack
 // @namespace    https://github.com/Puhhh/lichess-chesscom-style
-// @version      0.1.12
+// @version      0.1.13
 // @description  Replace Lichess board sounds with Chess.com sound URLs.
 // @author       Puhhh
 // @match        https://lichess.org/*
@@ -22,6 +22,7 @@
   const MAX_INSTALL_ATTEMPTS = 120;
   const INSTALL_RETRY_MS = 250;
   const SPECULATIVE_MOVE_DELAY_MS = 180;
+  const SOURCE_SOUND_PATH_PATTERN = /\/([^/?#.]+)(?:\.[a-f0-9]+)?\.mp3(?:[?#].*)?$/i;
 
   const chessComTheme = 'https://images.chesscomfiles.com/chess-themes/sounds/_MP3_/default/';
   const chessComWebSounds = 'https://www.chess.com/bundles/web/sounds/';
@@ -33,14 +34,15 @@
     checkmate: `${chessComTheme}game-end.mp3`,
     defeat: `${chessComTheme}game-end.mp3`,
     draw: `${chessComTheme}game-end.mp3`,
-    genericNotify: `${chessComTheme}game-start.mp3`,
-    lowTime: `${chessComTheme}tenseconds.mp3`,
+    genericnotify: `${chessComTheme}game-start.mp3`,
+    lowtime: `${chessComTheme}tenseconds.mp3`,
     move: `${chessComTheme}move-self.mp3`,
-    'Error': `${chessComWebSounds}incorrect-2-15.mp3`,
-    'PuzzleStormEnd': `${chessComWebSounds}explosion.mp3`,
-    'PuzzleStormGood': `${chessComWebSounds}correct-2-15.mp3`,
+    error: `${chessComWebSounds}incorrect-2-15.mp3`,
+    puzzlestormend: `${chessComWebSounds}explosion.mp3`,
+    puzzlestormgood: `${chessComWebSounds}correct-2-15.mp3`,
     victory: `${chessComTheme}game-end.mp3`,
   });
+  const PRELOAD_BEFORE_PLAY = new Set(['error', 'puzzlestormend', 'puzzlestormgood']);
   const blobPathCache = new Map();
   let plyHookInstalled = false;
   let previousPly;
@@ -49,22 +51,18 @@
     if (DEBUG) root.console?.debug?.('[lichess-chesscom-soundpack]', ...args);
   }
 
+  function normalizeSoundName(name) {
+    return typeof name === 'string' ? name.toLowerCase() : undefined;
+  }
+
   function mappedPath(name) {
-    return SOUND_MAP[name];
+    return SOUND_MAP[normalizeSoundName(name)];
   }
 
   function mappedPathFromSourcePath(path) {
     if (!path) return undefined;
-    if (/\/PuzzleStormGood(?:\.[a-f0-9]+)?\.mp3(?:[?#].*)?$/i.test(path)) {
-      return SOUND_MAP['PuzzleStormGood'];
-    }
-    if (/\/PuzzleStormEnd(?:\.[a-f0-9]+)?\.mp3(?:[?#].*)?$/i.test(path)) {
-      return SOUND_MAP['PuzzleStormEnd'];
-    }
-    if (/\/Error(?:\.[a-f0-9]+)?\.mp3(?:[?#].*)?$/i.test(path)) {
-      return SOUND_MAP['Error'];
-    }
-    return undefined;
+    const match = path.match(SOURCE_SOUND_PATH_PATTERN);
+    return match ? mappedPath(match[1]) : undefined;
   }
 
   function replacementPath(name, path) {
@@ -72,7 +70,8 @@
   }
 
   function preloadBeforePlay(name) {
-    return typeof name === 'string' && /^(?:PuzzleStorm(?:Good|End)|Error)$/.test(name) && Boolean(mappedPath(name));
+    const normalizedName = normalizeSoundName(name);
+    return PRELOAD_BEFORE_PLAY.has(normalizedName) && Boolean(mappedPath(normalizedName));
   }
 
   async function cspSafePath(path) {

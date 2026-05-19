@@ -189,6 +189,37 @@ test('replaces known Lichess puzzle sound URLs independent of the hashed asset n
   ]);
 });
 
+test('replaces known Lichess sound URLs by hashed asset name', async () => {
+  const { calls, gmRequests, sound } = loadScript();
+
+  await sound.load('unknownCastleSound', 'https://lichess1.org/assets/hashed/castle.abcdef12.mp3');
+  await sound.load('unknownMoveSound', 'https://lichess1.org/assets/hashed/move.abcdef12.mp3');
+  await sound.load('unknownCaptureSound', 'https://lichess1.org/assets/hashed/capture.abcdef12.mp3');
+  await sound.load('unknownCheckSound', 'https://lichess1.org/assets/hashed/check.abcdef12.mp3');
+  await sound.load('unknownGenericNotifySound', 'https://lichess1.org/assets/hashed/genericNotify.abcdef12.mp3');
+  await sound.load('unknownLowTimeSound', 'https://lichess1.org/assets/hashed/lowTime.abcdef12.mp3');
+  await sound.load('unknownVictorySound', 'https://lichess1.org/assets/hashed/victory.abcdef12.mp3');
+
+  assert.deepEqual(gmRequests.map(request => request.url), [
+    'https://images.chesscomfiles.com/chess-themes/sounds/_MP3_/default/castle.mp3',
+    'https://images.chesscomfiles.com/chess-themes/sounds/_MP3_/default/move-self.mp3',
+    'https://images.chesscomfiles.com/chess-themes/sounds/_MP3_/default/capture.mp3',
+    'https://images.chesscomfiles.com/chess-themes/sounds/_MP3_/default/move-check.mp3',
+    'https://images.chesscomfiles.com/chess-themes/sounds/_MP3_/default/game-start.mp3',
+    'https://images.chesscomfiles.com/chess-themes/sounds/_MP3_/default/tenseconds.mp3',
+    'https://images.chesscomfiles.com/chess-themes/sounds/_MP3_/default/game-end.mp3',
+  ]);
+  assert.deepEqual(calls, [
+    ['load', 'unknownCastleSound', 'blob:mock-1'],
+    ['load', 'unknownMoveSound', 'blob:mock-2'],
+    ['load', 'unknownCaptureSound', 'blob:mock-3'],
+    ['load', 'unknownCheckSound', 'blob:mock-4'],
+    ['load', 'unknownGenericNotifySound', 'blob:mock-5'],
+    ['load', 'unknownLowTimeSound', 'blob:mock-6'],
+    ['load', 'unknownVictorySound', 'blob:mock-7'],
+  ]);
+});
+
 test('replaces known puzzle sounds by name', async () => {
   const { calls, gmRequests, sound } = loadScript();
 
