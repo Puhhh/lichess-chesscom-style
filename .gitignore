@@ -1,5 +1,4 @@
 soundpack/
 boards/
 pieces/
-
-*.sh
+scripts/*
