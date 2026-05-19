@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Lichess Chess.com Soundpack
 // @namespace    https://github.com/Puhhh/lichess-chesscom-style
-// @version      0.1.13
+// @version      0.1.14
 // @description  Replace Lichess board sounds with Chess.com sound URLs.
 // @author       Puhhh
 // @match        https://lichess.org/*
@@ -25,8 +25,6 @@
   const SOURCE_SOUND_PATH_PATTERN = /\/([^/?#.]+)(?:\.[a-f0-9]+)?\.mp3(?:[?#].*)?$/i;
 
   const chessComTheme = 'https://images.chesscomfiles.com/chess-themes/sounds/_MP3_/default/';
-  const chessComWebSounds = 'https://www.chess.com/bundles/web/sounds/';
-
   const SOUND_MAP = Object.freeze({
     castle: `${chessComTheme}castle.mp3`,
     capture: `${chessComTheme}capture.mp3`,
@@ -37,12 +35,8 @@
     genericnotify: `${chessComTheme}game-start.mp3`,
     lowtime: `${chessComTheme}tenseconds.mp3`,
     move: `${chessComTheme}move-self.mp3`,
-    error: `${chessComWebSounds}incorrect-2-15.mp3`,
-    puzzlestormend: `${chessComWebSounds}explosion.mp3`,
-    puzzlestormgood: `${chessComWebSounds}correct-2-15.mp3`,
     victory: `${chessComTheme}game-end.mp3`,
   });
-  const PRELOAD_BEFORE_PLAY = new Set(['error', 'puzzlestormend', 'puzzlestormgood']);
   const blobPathCache = new Map();
   let plyHookInstalled = false;
   let previousPly;
@@ -67,11 +61,6 @@
 
   function replacementPath(name, path) {
     return mappedPath(name) || mappedPathFromSourcePath(path) || path;
-  }
-
-  function preloadBeforePlay(name) {
-    const normalizedName = normalizeSoundName(name);
-    return PRELOAD_BEFORE_PLAY.has(normalizedName) && Boolean(mappedPath(normalizedName));
   }
 
   async function cspSafePath(path) {
@@ -131,9 +120,6 @@
       sound.play = function chessComSoundpackPlay(name, volume) {
         if ((name === 'check' || name === 'checkmate') && speculativeMoveTimer) {
           clearSpeculativeMoveTimer();
-        }
-        if (preloadBeforePlay(name)) {
-          return sound.load(name).then(() => originalPlay(name, volume));
         }
         return originalPlay(name, volume);
       };

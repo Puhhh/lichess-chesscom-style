@@ -141,51 +141,28 @@ test('fetches external sound URLs through Tampermonkey and hands Lichess blob UR
   ]);
 });
 
-test('replaces known Lichess puzzle sounds even when Lichess passes hashed URLs', async () => {
+test('keeps removed Lichess puzzle sounds unchanged when Lichess passes hashed URLs', async () => {
   const { blobUrls, calls, gmRequests, sound } = loadScript();
 
   await sound.load('PuzzleStormGood', 'https://lichess1.org/assets/hashed/PuzzleStormGood.3ddd5aee.mp3');
   await sound.load('PuzzleStormEnd', 'https://lichess1.org/assets/hashed/PuzzleStormEnd.d8ac1783.mp3');
 
-  assert.deepEqual(
-    gmRequests.map(request => request.url),
-    [
-      'https://www.chess.com/bundles/web/sounds/correct-2-15.mp3',
-      'https://www.chess.com/bundles/web/sounds/explosion.mp3',
-    ],
-  );
-  assert.deepEqual(blobUrls, [
-    {
-      url: 'blob:mock-1',
-      blob: {
-        type: 'audio/mpeg',
-        url: 'https://www.chess.com/bundles/web/sounds/correct-2-15.mp3',
-      },
-    },
-    {
-      url: 'blob:mock-2',
-      blob: {
-        type: 'audio/mpeg',
-        url: 'https://www.chess.com/bundles/web/sounds/explosion.mp3',
-      },
-    },
-  ]);
+  assert.deepEqual(gmRequests, []);
+  assert.deepEqual(blobUrls, []);
   assert.deepEqual(calls, [
-    ['load', 'PuzzleStormGood', 'blob:mock-1'],
-    ['load', 'PuzzleStormEnd', 'blob:mock-2'],
+    ['load', 'PuzzleStormGood', 'https://lichess1.org/assets/hashed/PuzzleStormGood.3ddd5aee.mp3'],
+    ['load', 'PuzzleStormEnd', 'https://lichess1.org/assets/hashed/PuzzleStormEnd.d8ac1783.mp3'],
   ]);
 });
 
-test('replaces known Lichess puzzle sound URLs independent of the hashed asset name', async () => {
+test('keeps removed Lichess puzzle sound URLs unchanged independent of the hashed asset name', async () => {
   const { calls, gmRequests, sound } = loadScript();
 
   await sound.load('unknownPuzzleSound', 'https://lichess1.org/assets/hashed/PuzzleStormGood.abcdef12.mp3');
 
-  assert.deepEqual(gmRequests.map(request => request.url), [
-    'https://www.chess.com/bundles/web/sounds/correct-2-15.mp3',
-  ]);
+  assert.deepEqual(gmRequests, []);
   assert.deepEqual(calls, [
-    ['load', 'unknownPuzzleSound', 'blob:mock-1'],
+    ['load', 'unknownPuzzleSound', 'https://lichess1.org/assets/hashed/PuzzleStormGood.abcdef12.mp3'],
   ]);
 });
 
@@ -220,52 +197,31 @@ test('replaces known Lichess sound URLs by hashed asset name', async () => {
   ]);
 });
 
-test('replaces known puzzle sounds by name', async () => {
+test('keeps removed puzzle sounds unchanged by name', async () => {
   const { calls, gmRequests, sound } = loadScript();
 
   await sound.play('PuzzleStormGood');
   await sound.play('PuzzleStormEnd');
   await sound.play('Error');
 
-  assert.deepEqual(
-    gmRequests.map(request => request.url),
-    [
-      'https://www.chess.com/bundles/web/sounds/correct-2-15.mp3',
-      'https://www.chess.com/bundles/web/sounds/explosion.mp3',
-      'https://www.chess.com/bundles/web/sounds/incorrect-2-15.mp3',
-    ],
-  );
+  assert.deepEqual(gmRequests, []);
   assert.deepEqual(calls, [
-    ['load', 'PuzzleStormGood', 'blob:mock-1'],
     ['play', 'PuzzleStormGood', undefined],
-    ['load', 'PuzzleStormEnd', 'blob:mock-2'],
     ['play', 'PuzzleStormEnd', undefined],
-    ['load', 'Error', 'blob:mock-3'],
     ['play', 'Error', undefined],
   ]);
 });
 
-test('replaces Lichess puzzle error sound', async () => {
+test('keeps removed Lichess puzzle error sound unchanged', async () => {
   const { blobUrls, calls, gmRequests, sound } = loadScript();
 
   await sound.load('Error', 'https://lichess1.org/assets/hashed/Error.11bd3340.mp3');
   await sound.play('Error');
 
-  assert.deepEqual(gmRequests.map(request => request.url), [
-    'https://www.chess.com/bundles/web/sounds/incorrect-2-15.mp3',
-  ]);
-  assert.deepEqual(blobUrls, [
-    {
-      url: 'blob:mock-1',
-      blob: {
-        type: 'audio/mpeg',
-        url: 'https://www.chess.com/bundles/web/sounds/incorrect-2-15.mp3',
-      },
-    },
-  ]);
+  assert.deepEqual(gmRequests, []);
+  assert.deepEqual(blobUrls, []);
   assert.deepEqual(calls, [
-    ['load', 'Error', 'blob:mock-1'],
-    ['load', 'Error', 'blob:mock-1'],
+    ['load', 'Error', 'https://lichess1.org/assets/hashed/Error.11bd3340.mp3'],
     ['play', 'Error', undefined],
   ]);
 });
