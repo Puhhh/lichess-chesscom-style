@@ -9,6 +9,14 @@ const scriptPath = path.join(__dirname, '..', 'lichess-chesscom-boardpack.user.j
 function loadScript({ hostname = 'lichess.org', withHead = true } = {}) {
   const appended = [];
   const elementsById = new Map();
+  const preloadLinks = [
+    {
+      removed: false,
+      remove() {
+        this.removed = true;
+      },
+    },
+  ];
   const parent = {
     appendChild(element) {
       appended.push(element);
@@ -37,6 +45,12 @@ function loadScript({ hostname = 'lichess.org', withHead = true } = {}) {
     getElementById(id) {
       return elementsById.get(id) || null;
     },
+    querySelectorAll(selector) {
+      if (selector === 'link[rel="preload"][href*="/assets/hashed/brown."]') {
+        return preloadLinks;
+      }
+      return [];
+    },
   };
 
   const window = {
@@ -52,15 +66,16 @@ function loadScript({ hostname = 'lichess.org', withHead = true } = {}) {
 
   vm.runInContext(fs.readFileSync(scriptPath, 'utf8'), context);
 
-  return { appended };
+  return { appended, preloadLinks };
 }
 
 test('injects a Chess.com board stylesheet on Lichess', () => {
-  const { appended } = loadScript();
+  const { appended, preloadLinks } = loadScript();
 
   assert.equal(appended.length, 1);
   assert.equal(appended[0].tagName, 'STYLE');
   assert.equal(appended[0].id, 'lichess-chesscom-boardpack-style');
+  assert.equal(preloadLinks[0].removed, true);
   assert.match(appended[0].textContent, /cg-board::before/);
   assert.match(appended[0].textContent, /background-image:\s*url\("https:\/\/images\.chesscomfiles\.com\/chess-themes\/boards\/brown\/200\.png"\)/);
   assert.match(appended[0].textContent, /background-size:\s*cover !important/);

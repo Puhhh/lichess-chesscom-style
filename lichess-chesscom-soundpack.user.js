@@ -27,43 +27,18 @@
   const chessComWebSounds = 'https://www.chess.com/bundles/web/sounds/';
 
   const SOUND_MAP = Object.freeze({
-    //berserk
     castle: `${chessComTheme}castle.mp3`,
     capture: `${chessComTheme}capture.mp3`,
     check: `${chessComTheme}move-check.mp3`,
     checkmate: `${chessComTheme}game-end.mp3`,
-    //confirmation
-    //countDown0
-    //countDown1
-    //countDown2
-    //countDown3
-    //countDown4
-    //countDown5
-    //countDown6
-    //countDown7
-    //countDown8
-    //countDown9
-    //countDown10
     defeat: `${chessComTheme}game-end.mp3`,
     draw: `${chessComTheme}game-end.mp3`,
-    //error
-    //explosion
     genericNotify: `${chessComTheme}game-start.mp3`,
     lowTime: `${chessComTheme}tenseconds.mp3`,
     move: `${chessComTheme}move-self.mp3`,
-    //premove
-    //newChallenge
-    //newPM
-    //outOfBound
-    'lisp/Error': `${chessComWebSounds}incorrect-2-15.mp3`,
-    'lisp/PuzzleStormEnd': `${chessComWebSounds}explosion.mp3`,
-    'lisp/PuzzleStormGood': `${chessComWebSounds}correct-2-15.mp3`,
-    //select
-    //socialNotify
-    //tournament1st
-    //tournament2nd
-    //tournament3rd
-    //tournamentOther
+    'Error': `${chessComWebSounds}incorrect-2-15.mp3`,
+    'PuzzleStormEnd': `${chessComWebSounds}explosion.mp3`,
+    'PuzzleStormGood': `${chessComWebSounds}correct-2-15.mp3`,
     victory: `${chessComTheme}game-end.mp3`,
   });
   const blobPathCache = new Map();
@@ -81,12 +56,14 @@
   function mappedPathFromSourcePath(path) {
     if (!path) return undefined;
     if (/\/PuzzleStormGood(?:\.[a-f0-9]+)?\.mp3(?:[?#].*)?$/i.test(path)) {
-      return SOUND_MAP['lisp/PuzzleStormGood'];
+      return SOUND_MAP['PuzzleStormGood'];
     }
     if (/\/PuzzleStormEnd(?:\.[a-f0-9]+)?\.mp3(?:[?#].*)?$/i.test(path)) {
-      return SOUND_MAP['lisp/PuzzleStormEnd'];
+      return SOUND_MAP['PuzzleStormEnd'];
     }
-    if (/\/Error(?:\.[a-f0-9]+)?\.mp3(?:[?#].*)?$/i.test(path)) return SOUND_MAP['lisp/Error'];
+    if (/\/Error(?:\.[a-f0-9]+)?\.mp3(?:[?#].*)?$/i.test(path)) {
+      return SOUND_MAP['Error'];
+    }
     return undefined;
   }
 
@@ -95,7 +72,7 @@
   }
 
   function preloadBeforePlay(name) {
-    return typeof name === 'string' && /^lisp\/(?:PuzzleStorm(?:Good|End)|Error)$/.test(name) && Boolean(mappedPath(name));
+    return typeof name === 'string' && /^(?:PuzzleStorm(?:Good|End)|Error)$/.test(name) && Boolean(mappedPath(name));
   }
 
   async function cspSafePath(path) {
