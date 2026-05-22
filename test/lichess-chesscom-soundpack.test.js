@@ -30,12 +30,32 @@ function createScheduler() {
   };
 }
 
+function createDocument() {
+  const premoveSquares = [];
+  return {
+    document: {
+      documentElement: {},
+      querySelectorAll(selector) {
+        if (selector === 'cg-board square.current-premove') return premoveSquares;
+        return [];
+      },
+    },
+    premoveSquares,
+  };
+}
+
+function flushAsync() {
+  return new Promise(resolve => setImmediate(resolve));
+}
+
 function loadScript({ pathname = '/', withSound = true, soundGlobal = 'lichess' } = {}) {
   const scheduler = createScheduler();
   const calls = [];
   const gmRequests = [];
   const blobUrls = [];
   const eventHandlers = {};
+  const mutationObservers = [];
+  const { document, premoveSquares } = createDocument();
   const sound = withSound
     ? {
       async load(name, path) {
@@ -67,6 +87,20 @@ function loadScript({ pathname = '/', withSound = true, soundGlobal = 'lichess' 
     },
     setTimeout: scheduler.setTimeout,
     clearTimeout: scheduler.clearTimeout,
+    document,
+    MutationObserver: class MockMutationObserver {
+      constructor(callback) {
+        this.callback = callback;
+        mutationObservers.push(this);
+      }
+
+      observe(target, options) {
+        this.target = target;
+        this.options = options;
+      }
+
+      disconnect() { }
+    },
     lichess: withSound && soundGlobal === 'lichess' ? { sound } : {},
     site: withSound && soundGlobal === 'site' ? { sound } : {},
     URL: {
@@ -95,7 +129,7 @@ function loadScript({ pathname = '/', withSound = true, soundGlobal = 'lichess' 
   vm.runInContext(fs.readFileSync(scriptPath, 'utf8'), context);
   scheduler.run();
 
-  return { blobUrls, calls, eventHandlers, gmRequests, scheduler, sound, window };
+  return { blobUrls, calls, eventHandlers, gmRequests, mutationObservers, premoveSquares, scheduler, sound, window };
 }
 
 test('maps known Lichess sound names to Chess.com URLs', async () => {
@@ -106,6 +140,7 @@ test('maps known Lichess sound names to Chess.com URLs', async () => {
   await sound.load('check');
   await sound.load('checkmate');
   await sound.load('castle');
+  await sound.load('premove');
 
   assert.deepEqual(calls, [
     ['load', 'move', 'blob:mock-1'],
@@ -113,6 +148,7 @@ test('maps known Lichess sound names to Chess.com URLs', async () => {
     ['load', 'check', 'blob:mock-3'],
     ['load', 'checkmate', 'blob:mock-4'],
     ['load', 'castle', 'blob:mock-5'],
+    ['load', 'premove', 'blob:mock-6'],
   ]);
 });
 
@@ -217,6 +253,7 @@ test('replaces known Lichess sound URLs by hashed asset name', async () => {
   await sound.load('unknownCheckSound', 'https://lichess1.org/assets/hashed/check.abcdef12.mp3');
   await sound.load('unknownGenericNotifySound', 'https://lichess1.org/assets/hashed/genericNotify.abcdef12.mp3');
   await sound.load('unknownLowTimeSound', 'https://lichess1.org/assets/hashed/lowTime.abcdef12.mp3');
+  await sound.load('unknownPremoveSound', 'https://lichess1.org/assets/hashed/premove.abcdef12.mp3');
   await sound.load('unknownVictorySound', 'https://lichess1.org/assets/hashed/victory.abcdef12.mp3');
 
   assert.deepEqual(gmRequests.map(request => request.url), [
@@ -226,6 +263,7 @@ test('replaces known Lichess sound URLs by hashed asset name', async () => {
     'https://images.chesscomfiles.com/chess-themes/sounds/_MP3_/default/move-check.mp3',
     'https://images.chesscomfiles.com/chess-themes/sounds/_MP3_/default/game-start.mp3',
     'https://images.chesscomfiles.com/chess-themes/sounds/_MP3_/default/tenseconds.mp3',
+    'https://images.chesscomfiles.com/chess-themes/sounds/_MP3_/default/premove.mp3',
     'https://images.chesscomfiles.com/chess-themes/sounds/_MP3_/default/game-end.mp3',
   ]);
   assert.deepEqual(calls, [
@@ -235,7 +273,8 @@ test('replaces known Lichess sound URLs by hashed asset name', async () => {
     ['load', 'unknownCheckSound', 'blob:mock-4'],
     ['load', 'unknownGenericNotifySound', 'blob:mock-5'],
     ['load', 'unknownLowTimeSound', 'blob:mock-6'],
-    ['load', 'unknownVictorySound', 'blob:mock-7'],
+    ['load', 'unknownPremoveSound', 'blob:mock-7'],
+    ['load', 'unknownVictorySound', 'blob:mock-8'],
   ]);
 });
 
@@ -317,7 +356,7 @@ test('uses analysis tree node check method when SAN has no check suffix', async 
   assert.deepEqual(calls, [['play', 'check', 1]]);
 });
 
-test('ignores premove flags when deriving move sounds', async () => {
+test('keeps premove flags as normal executed move sounds', async () => {
   const { calls, sound } = loadScript();
 
   await sound.move({ san: 'e4', isPremove: true });
@@ -326,6 +365,76 @@ test('ignores premove flags when deriving move sounds', async () => {
   assert.deepEqual(calls, [
     ['play', 'move', 1],
     ['play', 'move', 1],
+  ]);
+});
+
+test('keeps SAN priority when an executed move carries premove flags', async () => {
+  const { calls, sound } = loadScript();
+
+  await sound.move({ san: 'Qxf7#', isPremove: true });
+  await sound.move({ san: 'O-O+', premove: true });
+
+  assert.deepEqual(calls, [
+    ['play', 'checkmate', 1],
+    ['play', 'check', 1],
+  ]);
+});
+
+test('does not play premove from regular sound events', async () => {
+  const { calls, sound } = loadScript();
+
+  await sound.play('premove', 0.8);
+  await sound.move({ name: 'premove', filter: 'game' });
+
+  assert.deepEqual(calls, []);
+});
+
+test('plays premove when Chessground marks a current premove on the board', async () => {
+  const { calls, mutationObservers, premoveSquares } = loadScript();
+  calls.length = 0;
+
+  premoveSquares.push({ cgKey: 'e2' }, { cgKey: 'e4' });
+  mutationObservers[0].callback([{ type: 'childList' }]);
+  await flushAsync();
+
+  assert.deepEqual(calls, [
+    ['load', 'premove', 'blob:mock-1'],
+    ['play', 'premove', 1],
+  ]);
+});
+
+test('does not play premove for destination hints before a premove is set', async () => {
+  const { calls, mutationObservers } = loadScript();
+  calls.length = 0;
+
+  mutationObservers[0].callback([{ type: 'attributes', attributeName: 'class' }]);
+  await flushAsync();
+
+  assert.deepEqual(calls, []);
+});
+
+test('does not replay the same current premove until it is cleared and set again', async () => {
+  const { calls, mutationObservers, premoveSquares } = loadScript();
+  calls.length = 0;
+
+  premoveSquares.push({ cgKey: 'e2' }, { cgKey: 'e4' });
+  mutationObservers[0].callback([{ type: 'childList' }]);
+  await flushAsync();
+  mutationObservers[0].callback([{ type: 'attributes', attributeName: 'class' }]);
+  await flushAsync();
+
+  premoveSquares.length = 0;
+  mutationObservers[0].callback([{ type: 'childList' }]);
+  await flushAsync();
+  premoveSquares.push({ cgKey: 'g1' }, { cgKey: 'f3' });
+  mutationObservers[0].callback([{ type: 'childList' }]);
+  await flushAsync();
+
+  assert.deepEqual(calls, [
+    ['load', 'premove', 'blob:mock-1'],
+    ['play', 'premove', 1],
+    ['load', 'premove', 'blob:mock-1'],
+    ['play', 'premove', 1],
   ]);
 });
 

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Lichess Chess.com Soundpack
 // @namespace    https://github.com/Puhhh/lichess-chesscom-style
-// @version      0.1.16
+// @version      0.1.18
 // @description  Replace Lichess board sounds with Chess.com sound URLs.
 // @author       Puhhh
 // @match        https://lichess.org/*
@@ -35,11 +35,15 @@
     genericnotify: `${chessComTheme}game-start.mp3`,
     lowtime: `${chessComTheme}tenseconds.mp3`,
     move: `${chessComTheme}move-self.mp3`,
+    premove: `${chessComTheme}premove.mp3`,
     puzzlestormgood: 'https://www.chess.com/bundles/web/sounds/correct-2-15.mp3',
     victory: `${chessComTheme}game-end.mp3`,
   });
   const blobPathCache = new Map();
   let plyHookInstalled = false;
+  let premoveHookInstalled = false;
+  let boardPremovePlayAllowed = false;
+  let currentPremoveSignature = '';
   let previousPly;
 
   function debug(...args) {
@@ -94,6 +98,28 @@
     return /^[O0]-[O0](?:-[O0])?/.test(san);
   }
 
+  function boardPremoveSignature() {
+    const squares = Array.from(root.document?.querySelectorAll?.('cg-board square.current-premove') ?? []);
+    if (squares.length === 0) return '';
+
+    return squares
+      .map((square, index) => square.cgKey || square.dataset?.key || square.getAttribute?.('data-key') || square.style?.transform || String(index))
+      .sort()
+      .join('|');
+  }
+
+  function playBoardPremove(sound) {
+    Promise.resolve(sound.load?.('premove'))
+      .then(() => {
+        boardPremovePlayAllowed = true;
+        return sound.play?.('premove', 1);
+      })
+      .finally(() => {
+        boardPremovePlayAllowed = false;
+      })
+      .catch(error => root.console?.error?.(error));
+  }
+
   function install(sound) {
     if (!sound || sound[INSTALL_FLAG]) return Boolean(sound?.[INSTALL_FLAG]);
 
@@ -120,6 +146,7 @@
 
     if (originalPlay) {
       sound.play = async function chessComSoundpackPlay(name, volume) {
+        if (normalizeSoundName(name) === 'premove' && !boardPremovePlayAllowed) return undefined;
         if ((name === 'check' || name === 'checkmate') && speculativeMoveTimer) {
           clearSpeculativeMoveTimer();
         }
@@ -237,12 +264,42 @@
     return true;
   }
 
+  function installPremoveHook(sound) {
+    const documentElement = root.document?.documentElement;
+    const MutationObserver = root.MutationObserver;
+    if (premoveHookInstalled || !sound || !documentElement || typeof MutationObserver !== 'function') return premoveHookInstalled;
+
+    currentPremoveSignature = boardPremoveSignature();
+    const observer = new MutationObserver(() => {
+      const nextSignature = boardPremoveSignature();
+      if (!nextSignature) {
+        currentPremoveSignature = '';
+        return;
+      }
+      if (nextSignature === currentPremoveSignature) return;
+
+      currentPremoveSignature = nextSignature;
+      playBoardPremove(sound);
+    });
+    observer.observe(documentElement, {
+      attributeFilter: ['class'],
+      attributes: true,
+      childList: true,
+      subtree: true,
+    });
+
+    premoveHookInstalled = true;
+    debug('premove hook installed');
+    return true;
+  }
+
   function waitAndInstall(attempt = 0) {
     const sound = root.site?.sound || root.lichess?.sound;
     const soundInstalled = install(sound);
     const plyHookReady = installPlyHook(sound);
+    const premoveHookReady = installPremoveHook(sound);
 
-    if (soundInstalled && plyHookReady) return;
+    if (soundInstalled && plyHookReady && premoveHookReady) return;
     if (attempt >= MAX_INSTALL_ATTEMPTS) {
       debug('site.sound or lichess.sound was not found');
       return;
