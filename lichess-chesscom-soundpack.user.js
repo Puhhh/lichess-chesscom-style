@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Lichess Chess.com Soundpack
 // @namespace    https://github.com/Puhhh/lichess-chesscom-style
-// @version      0.1.18
+// @version      0.1.19
 // @description  Replace Lichess board sounds with Chess.com sound URLs.
 // @author       Puhhh
 // @match        https://lichess.org/*
@@ -267,10 +267,14 @@
   function installPremoveHook(sound) {
     const documentElement = root.document?.documentElement;
     const MutationObserver = root.MutationObserver;
-    if (premoveHookInstalled || !sound || !documentElement || typeof MutationObserver !== 'function') return premoveHookInstalled;
+    if (premoveHookInstalled || !sound || !documentElement || typeof MutationObserver !== 'function') {
+      return premoveHookInstalled;
+    }
 
+    let pendingPremoveCheck = false;
     currentPremoveSignature = boardPremoveSignature();
-    const observer = new MutationObserver(() => {
+    function checkBoardPremove() {
+      pendingPremoveCheck = false;
       const nextSignature = boardPremoveSignature();
       if (!nextSignature) {
         currentPremoveSignature = '';
@@ -280,7 +284,14 @@
 
       currentPremoveSignature = nextSignature;
       playBoardPremove(sound);
+    }
+
+    const observer = new MutationObserver(() => {
+      if (pendingPremoveCheck) return;
+      pendingPremoveCheck = true;
+      root.setTimeout(checkBoardPremove, 0);
     });
+
     observer.observe(documentElement, {
       attributeFilter: ['class'],
       attributes: true,

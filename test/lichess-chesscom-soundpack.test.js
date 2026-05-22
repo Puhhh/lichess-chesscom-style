@@ -32,15 +32,25 @@ function createScheduler() {
 
 function createDocument() {
   const premoveSquares = [];
+  const board = { tagName: 'CG-BOARD' };
+  const querySelectorAllCalls = [];
   return {
     document: {
       documentElement: {},
+      querySelector(selector) {
+        if (selector === 'cg-board') return board;
+        return undefined;
+      },
       querySelectorAll(selector) {
+        querySelectorAllCalls.push(selector);
+        if (selector === 'cg-board') return [board];
         if (selector === 'cg-board square.current-premove') return premoveSquares;
         return [];
       },
     },
+    board,
     premoveSquares,
+    querySelectorAllCalls,
   };
 }
 
@@ -55,7 +65,7 @@ function loadScript({ pathname = '/', withSound = true, soundGlobal = 'lichess' 
   const blobUrls = [];
   const eventHandlers = {};
   const mutationObservers = [];
-  const { document, premoveSquares } = createDocument();
+  const { board, document, premoveSquares, querySelectorAllCalls } = createDocument();
   const sound = withSound
     ? {
       async load(name, path) {
@@ -129,7 +139,7 @@ function loadScript({ pathname = '/', withSound = true, soundGlobal = 'lichess' 
   vm.runInContext(fs.readFileSync(scriptPath, 'utf8'), context);
   scheduler.run();
 
-  return { blobUrls, calls, eventHandlers, gmRequests, mutationObservers, premoveSquares, scheduler, sound, window };
+  return { blobUrls, board, calls, eventHandlers, gmRequests, mutationObservers, premoveSquares, querySelectorAllCalls, scheduler, sound, window };
 }
 
 test('maps known Lichess sound names to Chess.com URLs', async () => {
@@ -390,11 +400,12 @@ test('does not play premove from regular sound events', async () => {
 });
 
 test('plays premove when Chessground marks a current premove on the board', async () => {
-  const { calls, mutationObservers, premoveSquares } = loadScript();
+  const { calls, mutationObservers, premoveSquares, scheduler } = loadScript();
   calls.length = 0;
 
   premoveSquares.push({ cgKey: 'e2' }, { cgKey: 'e4' });
   mutationObservers[0].callback([{ type: 'childList' }]);
+  scheduler.run();
   await flushAsync();
 
   assert.deepEqual(calls, [
@@ -404,35 +415,73 @@ test('plays premove when Chessground marks a current premove on the board', asyn
 });
 
 test('does not play premove for destination hints before a premove is set', async () => {
-  const { calls, mutationObservers } = loadScript();
+  const { calls, mutationObservers, scheduler } = loadScript();
   calls.length = 0;
 
   mutationObservers[0].callback([{ type: 'attributes', attributeName: 'class' }]);
+  scheduler.run();
   await flushAsync();
 
   assert.deepEqual(calls, []);
 });
 
 test('does not replay the same current premove until it is cleared and set again', async () => {
-  const { calls, mutationObservers, premoveSquares } = loadScript();
+  const { calls, mutationObservers, premoveSquares, scheduler } = loadScript();
   calls.length = 0;
 
   premoveSquares.push({ cgKey: 'e2' }, { cgKey: 'e4' });
   mutationObservers[0].callback([{ type: 'childList' }]);
+  scheduler.run();
   await flushAsync();
   mutationObservers[0].callback([{ type: 'attributes', attributeName: 'class' }]);
+  scheduler.run();
   await flushAsync();
 
   premoveSquares.length = 0;
   mutationObservers[0].callback([{ type: 'childList' }]);
+  scheduler.run();
   await flushAsync();
   premoveSquares.push({ cgKey: 'g1' }, { cgKey: 'f3' });
   mutationObservers[0].callback([{ type: 'childList' }]);
+  scheduler.run();
   await flushAsync();
 
   assert.deepEqual(calls, [
     ['load', 'premove', 'blob:mock-1'],
     ['play', 'premove', 1],
+    ['load', 'premove', 'blob:mock-1'],
+    ['play', 'premove', 1],
+  ]);
+});
+
+test('observes the document root so board replacements keep premove sound working', () => {
+  const { board, mutationObservers, window } = loadScript();
+
+  assert.equal(mutationObservers[0].target, window.document.documentElement);
+  assert.notEqual(mutationObservers[0].target, board);
+  assert.deepEqual([...mutationObservers[0].options.attributeFilter], ['class']);
+  assert.equal(mutationObservers[0].options.attributes, true);
+  assert.equal(mutationObservers[0].options.childList, true);
+  assert.equal(mutationObservers[0].options.subtree, true);
+});
+
+test('coalesces repeated premove mutation checks into one scheduled scan', async () => {
+  const { calls, mutationObservers, premoveSquares, querySelectorAllCalls, scheduler } = loadScript();
+  calls.length = 0;
+  querySelectorAllCalls.length = 0;
+
+  premoveSquares.push({ cgKey: 'b1' }, { cgKey: 'c3' });
+  mutationObservers[0].callback([{ type: 'attributes', attributeName: 'class' }]);
+  mutationObservers[0].callback([{ type: 'childList' }]);
+  mutationObservers[0].callback([{ type: 'attributes', attributeName: 'class' }]);
+
+  assert.equal(querySelectorAllCalls.filter(selector => selector === 'cg-board square.current-premove').length, 0);
+
+  scheduler.run();
+  await flushAsync();
+
+  assert.equal(querySelectorAllCalls.filter(selector => selector === 'cg-board square.current-premove').length, 1);
+  assert.deepEqual(calls, [
     ['load', 'premove', 'blob:mock-1'],
     ['play', 'premove', 1],
   ]);
