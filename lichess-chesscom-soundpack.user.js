@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Lichess Chess.com Soundpack
 // @namespace    https://github.com/Puhhh/lichess-chesscom-style
-// @version      0.1.14
+// @version      0.1.16
 // @description  Replace Lichess board sounds with Chess.com sound URLs.
 // @author       Puhhh
 // @match        https://lichess.org/*
@@ -35,6 +35,7 @@
     genericnotify: `${chessComTheme}game-start.mp3`,
     lowtime: `${chessComTheme}tenseconds.mp3`,
     move: `${chessComTheme}move-self.mp3`,
+    puzzlestormgood: 'https://www.chess.com/bundles/web/sounds/correct-2-15.mp3',
     victory: `${chessComTheme}game-end.mp3`,
   });
   const blobPathCache = new Map();
@@ -46,7 +47,8 @@
   }
 
   function normalizeSoundName(name) {
-    return typeof name === 'string' ? name.toLowerCase() : undefined;
+    if (typeof name !== 'string') return undefined;
+    return name.split('/').pop().toLowerCase();
   }
 
   function mappedPath(name) {
@@ -117,9 +119,12 @@
     };
 
     if (originalPlay) {
-      sound.play = function chessComSoundpackPlay(name, volume) {
+      sound.play = async function chessComSoundpackPlay(name, volume) {
         if ((name === 'check' || name === 'checkmate') && speculativeMoveTimer) {
           clearSpeculativeMoveTimer();
+        }
+        if (mappedPath(name) && String(name).includes('/')) {
+          await sound.load(name);
         }
         return originalPlay(name, volume);
       };

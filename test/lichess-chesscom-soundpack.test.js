@@ -141,28 +141,70 @@ test('fetches external sound URLs through Tampermonkey and hands Lichess blob UR
   ]);
 });
 
-test('keeps removed Lichess puzzle sounds unchanged when Lichess passes hashed URLs', async () => {
+test('replaces PuzzleStormGood and keeps other removed Lichess puzzle sounds unchanged when Lichess passes hashed URLs', async () => {
   const { blobUrls, calls, gmRequests, sound } = loadScript();
 
   await sound.load('PuzzleStormGood', 'https://lichess1.org/assets/hashed/PuzzleStormGood.3ddd5aee.mp3');
   await sound.load('PuzzleStormEnd', 'https://lichess1.org/assets/hashed/PuzzleStormEnd.d8ac1783.mp3');
 
-  assert.deepEqual(gmRequests, []);
-  assert.deepEqual(blobUrls, []);
+  assert.deepEqual(gmRequests.map(request => request.url), [
+    'https://www.chess.com/bundles/web/sounds/correct-2-15.mp3',
+  ]);
+  assert.deepEqual(blobUrls, [
+    {
+      url: 'blob:mock-1',
+      blob: {
+        type: 'audio/mpeg',
+        url: 'https://www.chess.com/bundles/web/sounds/correct-2-15.mp3',
+      },
+    },
+  ]);
   assert.deepEqual(calls, [
-    ['load', 'PuzzleStormGood', 'https://lichess1.org/assets/hashed/PuzzleStormGood.3ddd5aee.mp3'],
+    ['load', 'PuzzleStormGood', 'blob:mock-1'],
     ['load', 'PuzzleStormEnd', 'https://lichess1.org/assets/hashed/PuzzleStormEnd.d8ac1783.mp3'],
   ]);
 });
 
-test('keeps removed Lichess puzzle sound URLs unchanged independent of the hashed asset name', async () => {
+test('replaces PuzzleStormGood URLs independent of the passed sound name', async () => {
   const { calls, gmRequests, sound } = loadScript();
 
   await sound.load('unknownPuzzleSound', 'https://lichess1.org/assets/hashed/PuzzleStormGood.abcdef12.mp3');
 
-  assert.deepEqual(gmRequests, []);
+  assert.deepEqual(gmRequests.map(request => request.url), [
+    'https://www.chess.com/bundles/web/sounds/correct-2-15.mp3',
+  ]);
   assert.deepEqual(calls, [
-    ['load', 'unknownPuzzleSound', 'https://lichess1.org/assets/hashed/PuzzleStormGood.abcdef12.mp3'],
+    ['load', 'unknownPuzzleSound', 'blob:mock-1'],
+  ]);
+});
+
+test('replaces real Lichess Puzzle Storm good sound name when playing', async () => {
+  const { calls, gmRequests, sound } = loadScript({ soundGlobal: 'site' });
+
+  await sound.play('lisp/PuzzleStormGood', 0.7);
+
+  assert.deepEqual(gmRequests.map(request => request.url), [
+    'https://www.chess.com/bundles/web/sounds/correct-2-15.mp3',
+  ]);
+  assert.deepEqual(calls, [
+    ['load', 'lisp/PuzzleStormGood', 'blob:mock-1'],
+    ['play', 'lisp/PuzzleStormGood', 0.7],
+  ]);
+});
+
+test('replaces real Lichess Puzzle Storm good sound after original preload', async () => {
+  const { calls, gmRequests, sound } = loadScript({ soundGlobal: 'site' });
+
+  await sound.load('lisp/PuzzleStormGood', 'https://lichess1.org/assets/hashed/PuzzleStormGood.3ddd5aee.mp3');
+  await sound.play('lisp/PuzzleStormGood', 0.7);
+
+  assert.deepEqual(gmRequests.map(request => request.url), [
+    'https://www.chess.com/bundles/web/sounds/correct-2-15.mp3',
+  ]);
+  assert.deepEqual(calls, [
+    ['load', 'lisp/PuzzleStormGood', 'blob:mock-1'],
+    ['load', 'lisp/PuzzleStormGood', 'blob:mock-1'],
+    ['play', 'lisp/PuzzleStormGood', 0.7],
   ]);
 });
 
@@ -197,16 +239,14 @@ test('replaces known Lichess sound URLs by hashed asset name', async () => {
   ]);
 });
 
-test('keeps removed puzzle sounds unchanged by name', async () => {
+test('keeps other removed puzzle sounds unchanged by name', async () => {
   const { calls, gmRequests, sound } = loadScript();
 
-  await sound.play('PuzzleStormGood');
   await sound.play('PuzzleStormEnd');
   await sound.play('Error');
 
   assert.deepEqual(gmRequests, []);
   assert.deepEqual(calls, [
-    ['play', 'PuzzleStormGood', undefined],
     ['play', 'PuzzleStormEnd', undefined],
     ['play', 'Error', undefined],
   ]);
